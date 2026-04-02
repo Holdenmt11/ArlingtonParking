@@ -9,6 +9,11 @@
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   />
 
+
+
+
+
+
   <style>
     #map {
       height: 100vh;
@@ -21,6 +26,19 @@
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- MarkerCluster CSS -->
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+/>
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+/>
+
+<!-- MarkerCluster JS -->
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<!-- MarkerCluster JS -->
 <script>
   // Initialize map centered on Arlington, VA
   const map = L.map("map").setView([38.8816, -77.0910], 14);
@@ -31,31 +49,48 @@
     maxZoom:19
   }).addTo(map);
 
-  // Load ExactPark stall data
-  fetch("https://api.exactpark.com/api/v2/arlington/status/zones")
-    .then(res => res.json())
-    .then(json => {
-      json.data.forEach(stall => {
-        const { lat, long } = stall.location;
 
-        // Color by occupancy
-        const color = stall.status === "vacant" ? "green" : "orange";
 
-        L.circleMarker([lat, long], {
-          radius: 4,
-          color,
-          fillOpacity: 0.8
-        })
-          .addTo(map)
-          .bindPopup(`
-            <strong>Stall:</strong> ${stall.stallName}<br/>
-            <strong>Status:</strong> ${stall.status}<br/>
-            <strong>Blockface:</strong> ${stall.blockfaceID}<br/>
-            <small>${stall.payloadTimestamp}</small>
-          `);
+
+const clusterGroup = L.markerClusterGroup({
+  disableClusteringAtZoom: 18,   // show individual stalls when zoomed in
+  spiderfyOnMaxZoom: true,
+  showCoverageOnHover: false,
+  maxClusterRadius: 50
+});
+
+map.addLayer(clusterGroup);
+
+fetch("https://api.exactpark.com/api/v2/arlington/status/zones")
+  .then(res => res.json())
+  .then(json => {
+    json.data.forEach(stall => {
+      const { lat, long } = stall.location;
+
+      const color =
+        stall.status === "vacant" ? "green" : "orange";
+
+      const marker = L.circleMarker([lat, long], {
+        radius: 4,
+        color,
+        weight: 1,
+        fillColor: color,
+        fillOpacity: 0.85
       });
-    })
-    .catch(err => console.error("ExactPark API error:", err));
+
+      marker.bindPopup(`
+        <strong>${stall.stallName}</strong><br/>
+        Status: ${stall.status}<br/>
+        Blockface: ${stall.blockfaceID}<br/>
+        <small>${stall.payloadTimestamp}</small>
+      `);
+
+      clusterGroup.addLayer(marker);
+    });
+  })
+  .catch(err => console.error(err));
+
+
 </script>
 
 </body>
